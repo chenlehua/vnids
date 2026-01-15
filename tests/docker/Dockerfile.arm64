@@ -10,6 +10,12 @@ LABEL description="ARM64 test environment for VNIDS testing"
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
+# Configure Chinese APT mirror for faster downloads
+# Note: ARM64 uses ports.ubuntu.com instead of archive.ubuntu.com
+RUN sed -i 's|http://ports.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list && \
+    sed -i 's|http://archive.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list && \
+    sed -i 's|http://security.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list
+
 # Install all dependencies including Suricata
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Suricata IDS (pre-built)
