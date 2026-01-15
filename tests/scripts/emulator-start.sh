@@ -5,7 +5,8 @@
 set -e
 
 AVD_NAME="${1:-vnids-test-avd}"
-ANDROID_SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+ANDROID_SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+DEFAULT_SDK_DIR="${HOME}/Android/Sdk"
 
 # Colors
 RED='\033[0;31m'
@@ -17,14 +18,83 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-# Check if Android SDK is available
-if [ -z "$ANDROID_SDK" ] || [ ! -d "$ANDROID_SDK" ]; then
-    log_error "Android SDK not found. Set ANDROID_SDK_ROOT or ANDROID_HOME"
-fi
+install_android_sdk() {
+    local sdk_dir="$1"
+    local tools_url="https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+    local tmp_dir
+
+    if ! command -v unzip &> /dev/null; then
+        log_error "unzip not found. Please install it first."
+    fi
+    if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
+        log_error "curl or wget is required to download Android SDK."
+    fi
+    if ! command -v java &> /dev/null; then
+        log_error "Java not found. Please install OpenJDK 11+."
+    fi
+
+    log_info "Installing Android SDK to: ${sdk_dir}"
+    mkdir -p "${sdk_dir}/cmdline-tools"
+    tmp_dir="$(mktemp -d)"
+    trap 'rm -rf "${tmp_dir}"' RETURN
+
+    log_info "Downloading Android SDK command-line tools..."
+    if command -v curl &> /dev/null; then
+        curl -fsSL "${tools_url}" -o "${tmp_dir}/cmdline-tools.zip"
+    else
+        wget -qO "${tmp_dir}/cmdline-tools.zip" "${tools_url}"
+    fi
+
+    unzip -q "${tmp_dir}/cmdline-tools.zip" -d "${tmp_dir}"
+    rm -rf "${sdk_dir}/cmdline-tools/latest"
+    mv "${tmp_dir}/cmdline-tools" "${sdk_dir}/cmdline-tools/latest"
+
+    export ANDROID_SDK_ROOT="${sdk_dir}"
+    export ANDROID_HOME="${sdk_dir}"
+    export PATH="${PATH}:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator"
+
+    log_info "Accepting Android SDK licenses..."
+    yes | sdkmanager --licenses > /dev/null 2>&1 || true
+    sdkmanager --sdk_root="${sdk_dir}" --update
+    sdkmanager --sdk_root="${sdk_dir}" \
+        "platform-tools" \
+        "platforms;android-31" \
+        "emulator" \
+        "system-images;android-31;google_apis;arm64-v8a"
+}
+
+ensure_android_sdk() {
+    if [ -z "${ANDROID_SDK}" ]; then
+        ANDROID_SDK="${DEFAULT_SDK_DIR}"
+    fi
+
+    if [ ! -d "${ANDROID_SDK}" ]; then
+        log_warn "Android SDK not found. Installing to ${ANDROID_SDK}."
+        install_android_sdk "${ANDROID_SDK}"
+        return
+    fi
+
+    export ANDROID_SDK_ROOT="${ANDROID_SDK}"
+    export ANDROID_HOME="${ANDROID_SDK}"
+    export PATH="${PATH}:${ANDROID_SDK}/cmdline-tools/latest/bin:${ANDROID_SDK}/platform-tools:${ANDROID_SDK}/emulator"
+
+    if ! command -v sdkmanager &> /dev/null; then
+        log_warn "Android SDK command-line tools missing. Installing..."
+        install_android_sdk "${ANDROID_SDK}"
+    fi
+}
+
+ensure_android_sdk
 
 # Check if emulator command exists
 if ! command -v emulator &> /dev/null; then
     export PATH="$PATH:$ANDROID_SDK/emulator:$ANDROID_SDK/platform-tools"
+fi
+if ! command -v emulator &> /dev/null; then
+    log_error "Android emulator not found. Install SDK package: emulator"
+fi
+if ! command -v adb &> /dev/null; then
+    log_error "adb not found. Install SDK package: platform-tools"
 fi
 
 # Check if AVD exists
@@ -33,9 +103,10 @@ if ! emulator -list-avds 2>/dev/null | grep -q "$AVD_NAME"; then
 
     # Check for system image
     SYSTEM_IMAGE="system-images;android-31;google_apis;arm64-v8a"
-    if ! sdkmanager --list_installed 2>/dev/null | grep -q "arm64-v8a"; then
+    SYSTEM_IMAGE_DIR="${ANDROID_SDK}/system-images/android-31/google_apis/arm64-v8a"
+    if [ ! -d "${SYSTEM_IMAGE_DIR}" ]; then
         log_info "Installing system image..."
-        sdkmanager "$SYSTEM_IMAGE"
+        sdkmanager --sdk_root="${ANDROID_SDK}" "$SYSTEM_IMAGE"
     fi
 
     # Create AVD
