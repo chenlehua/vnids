@@ -32,8 +32,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
-    # Android emulator dependencies
-    openjdk-11-jdk-headless \
+    # Android emulator dependencies (Java 17 required for Android SDK command-line tools 11.0+)
+    openjdk-17-jdk-headless \
     libx11-6 \
     libpulse0 \
     libgl1 \
