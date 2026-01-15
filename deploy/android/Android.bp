@@ -1,0 +1,146 @@
+# Android.bp - VNIDS Android Build Configuration
+#
+# For Android 12+ (API level 31+)
+# Place this file in the VNIDS source directory under AOSP tree
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+cc_defaults {
+    name: "vnids_defaults",
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-D_GNU_SOURCE",
+        "-D_POSIX_C_SOURCE=200809L",
+        "-DANDROID",
+    ],
+    local_include_dirs: [
+        "shared/include",
+    ],
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libsqlite",
+    ],
+    static_libs: [
+        "libcjson",
+    ],
+}
+
+// VNIDS Daemon
+cc_binary {
+    name: "vnidsd",
+    defaults: ["vnids_defaults"],
+    srcs: [
+        "vnidsd/src/main.c",
+        "vnidsd/src/daemon.c",
+        "vnidsd/src/config.c",
+        "vnidsd/src/config_validate.c",
+        "vnidsd/src/log.c",
+        "vnidsd/src/signal.c",
+        "vnidsd/src/pidfile.c",
+        "vnidsd/src/eventloop.c",
+        "vnidsd/src/types.c",
+        "vnidsd/src/ipc_server.c",
+        "vnidsd/src/ipc_client.c",
+        "vnidsd/src/ipc_message.c",
+        "vnidsd/src/ipc_control.c",
+        "vnidsd/src/eve_parser.c",
+        "vnidsd/src/eve_reader.c",
+        "vnidsd/src/event_queue.c",
+        "vnidsd/src/event_handler.c",
+        "vnidsd/src/storage.c",
+        "vnidsd/src/watchdog.c",
+        "vnidsd/src/api_server.c",
+    ],
+    local_include_dirs: [
+        "vnidsd/include",
+    ],
+    init_rc: ["vnidsd.rc"],
+    vendor: true,
+    owner: "vnids",
+}
+
+// VNIDS CLI Tool
+cc_binary {
+    name: "vnids-cli",
+    defaults: ["vnids_defaults"],
+    srcs: [
+        "vnids-cli/src/main.c",
+        "vnids-cli/src/client.c",
+        "vnids-cli/src/commands.c",
+        "vnids-cli/src/output.c",
+    ],
+    local_include_dirs: [
+        "vnids-cli/include",
+    ],
+    vendor: true,
+    owner: "vnids",
+}
+
+// Pre-built files
+prebuilt_etc {
+    name: "vnidsd.conf",
+    src: "deploy/common/vnidsd.conf.example",
+    sub_dir: "vnids",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "suricata.yaml",
+    src: "suricata/config/suricata.yaml",
+    sub_dir: "vnids/suricata",
+    vendor: true,
+}
+
+// Detection rules
+prebuilt_etc {
+    name: "vnids-baseline.rules",
+    src: "suricata/rules/vnids-baseline.rules",
+    sub_dir: "vnids/rules",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "vnids-someip.rules",
+    src: "suricata/rules/vnids-someip.rules",
+    sub_dir: "vnids/rules",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "vnids-doip.rules",
+    src: "suricata/rules/vnids-doip.rules",
+    sub_dir: "vnids/rules",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "vnids-flood.rules",
+    src: "suricata/rules/vnids-flood.rules",
+    sub_dir: "vnids/rules",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "vnids-anomaly.rules",
+    src: "suricata/rules/vnids-anomaly.rules",
+    sub_dir: "vnids/rules",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "classification.config",
+    src: "suricata/rules/classification.config",
+    sub_dir: "vnids/rules",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "reference.config",
+    src: "suricata/rules/reference.config",
+    sub_dir: "vnids/rules",
+    vendor: true,
+}

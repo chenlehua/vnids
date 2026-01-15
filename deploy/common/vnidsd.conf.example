@@ -1,0 +1,77 @@
+# VNIDS Daemon Example Configuration
+# Copy to /etc/vnids/vnidsd.conf and modify as needed
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+[general]
+# Logging level: trace, debug, info, warn, error
+log_level = info
+
+# Run in foreground (for debugging)
+foreground = false
+
+# PID file location
+pidfile = /var/run/vnids/vnidsd.pid
+
+[suricata]
+# Path to Suricata binary
+binary = /usr/bin/suricata
+
+# Path to Suricata configuration
+config = /etc/vnids/suricata/suricata.yaml
+
+# Detection rules directory
+rules_dir = /etc/vnids/rules
+
+# Log directory
+log_dir = /var/log/vnids/suricata
+
+# Network interfaces to monitor (comma-separated)
+interfaces = eth0
+
+# Enable/disable Suricata auto-restart on crash
+auto_restart = true
+
+# Maximum restart attempts before giving up
+max_restart_attempts = 5
+
+[ipc]
+# Socket directory
+socket_dir = /var/run/vnids
+
+# EVE socket path (for receiving events from Suricata)
+eve_socket = /var/run/vnids/eve.sock
+
+# API socket path (for CLI and control)
+api_socket = /var/run/vnids/api.sock
+
+# Socket permissions (octal)
+socket_permissions = 0660
+
+# Socket group (optional)
+# socket_group = vnids
+
+[storage]
+# Database path for event storage
+database = /var/lib/vnids/events.db
+
+# Maximum events to store
+max_events = 100000
+
+# Event retention period (seconds, 0 = unlimited)
+retention_seconds = 604800
+
+[watchdog]
+# Watchdog check interval (milliseconds)
+interval_ms = 5000
+
+# Suricata startup timeout (seconds)
+startup_timeout = 30
+
+[stats]
+# Statistics collection interval (seconds)
+interval = 10
+
+# Enable statistics logging
+log_stats = true

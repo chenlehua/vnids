@@ -1,0 +1,263 @@
+%YAML 1.1
+---
+# VNIDS Suricata Configuration
+#
+# Optimized for vehicle network intrusion detection
+# with automotive protocol support.
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Global settings
+vars:
+  address-groups:
+    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    EXTERNAL_NET: "!$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+    HTTP_SERVERS: "$HOME_NET"
+  port-groups:
+    HTTP_PORTS: "80,8080"
+    SSH_PORTS: "22"
+    DNS_PORTS: "53"
+    SOMEIP_PORTS: "30490:30500"
+    DOIP_PORTS: "13400"
+
+# Default log directory
+default-log-dir: /var/log/vnids/suricata
+
+# Stats configuration
+stats:
+  enabled: yes
+  interval: 10
+
+# Output configuration
+outputs:
+  # EVE JSON output to Unix socket (for vnidsd)
+  - eve-log:
+      enabled: yes
+      filetype: unix_stream
+      filename: /var/run/vnids/eve.sock
+      pcap-file: false
+      community-id: true
+      community-id-seed: 0
+      types:
+        - alert:
+            payload: yes
+            payload-buffer-size: 4kb
+            payload-printable: yes
+            packet: no
+            metadata:
+              app-layer: true
+              flow: true
+              rule: true
+        - anomaly:
+            enabled: yes
+            types:
+              decode: yes
+              stream: yes
+              applayer: yes
+        - stats:
+            totals: yes
+            threads: no
+            deltas: no
+        - flow
+
+  # Fast log for debugging
+  - fast:
+      enabled: no
+      filename: fast.log
+      append: yes
+
+# Logging
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: no
+    - syslog:
+        enabled: yes
+        facility: local5
+        format: "[%i] <%d> -- "
+
+# Detection engine
+detect:
+  profile: medium
+  custom-values:
+    toclient-groups: 3
+    toserver-groups: 25
+  sgh-mpm-context: auto
+  inspection-recursion-limit: 3000
+
+# Threading - optimized for embedded systems
+threading:
+  set-cpu-affinity: no
+  cpu-affinity:
+    - management-cpu-set:
+        cpu: [0]
+    - receive-cpu-set:
+        cpu: [0]
+    - worker-cpu-set:
+        cpu: ["all"]
+        mode: "exclusive"
+  detect-thread-ratio: 1.0
+
+# Runmode
+runmode: workers
+
+# Defrag settings (IPv4/IPv6)
+defrag:
+  memcap: 8mb
+  hash-size: 4096
+  trackers: 8192
+  max-frags: 8192
+  prealloc: yes
+  timeout: 60
+
+# Flow settings
+flow:
+  memcap: 16mb
+  hash-size: 16384
+  prealloc: 4096
+  emergency-recovery: 30
+  prune-flows: 5
+
+# Flow timeouts
+flow-timeouts:
+  default:
+    new: 30
+    established: 300
+    closed: 0
+    bypassed: 100
+    emergency-new: 10
+    emergency-established: 100
+    emergency-closed: 0
+    emergency-bypassed: 50
+  tcp:
+    new: 60
+    established: 600
+    closed: 60
+    bypassed: 100
+    emergency-new: 5
+    emergency-established: 100
+    emergency-closed: 0
+    emergency-bypassed: 50
+  udp:
+    new: 30
+    established: 120
+    bypassed: 100
+    emergency-new: 10
+    emergency-established: 30
+    emergency-bypassed: 50
+  icmp:
+    new: 30
+    established: 120
+    bypassed: 100
+    emergency-new: 10
+    emergency-established: 30
+    emergency-bypassed: 50
+
+# Stream engine
+stream:
+  memcap: 16mb
+  checksum-validation: no
+  inline: no
+  reassembly:
+    memcap: 16mb
+    depth: 1mb
+    toserver-chunk-size: 2560
+    toclient-chunk-size: 2560
+    randomize-chunk-size: yes
+
+# Host config (for defrag and stream)
+host:
+  hash-size: 4096
+  prealloc: 1000
+  memcap: 8mb
+
+# Packet capture settings
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+    ring-size: 2048
+    block-size: 32768
+    buffer-size: 32768
+
+# PCAP settings (fallback)
+pcap:
+  - interface: eth0
+    buffer-size: 16mb
+    bpf-filter: ""
+    checksum-checks: no
+    promisc: yes
+    snaplen: 1518
+
+# Application layer protocols
+app-layer:
+  protocols:
+    # HTTP parser
+    http:
+      enabled: yes
+      memcap: 8mb
+      request-body-limit: 1mb
+      response-body-limit: 1mb
+
+    # TLS/SSL
+    tls:
+      enabled: yes
+      detection-ports:
+        dp: 443
+
+    # DNS
+    dns:
+      enabled: yes
+      request-flood: 500
+
+    # MQTT (IoT protocol)
+    mqtt:
+      enabled: yes
+      max-msg-length: 1mb
+
+    # FTP
+    ftp:
+      enabled: yes
+      memcap: 4mb
+
+    # SOME/IP (Automotive)
+    someip:
+      enabled: yes
+
+    # DoIP (Diagnostics over IP - Automotive)
+    # Note: Requires custom parser if not in upstream Suricata
+    # doip:
+    #   enabled: yes
+
+# Coredump
+coredump:
+  max-dump: unlimited
+
+# Unix command socket
+unix-command:
+  enabled: yes
+  filename: /var/run/vnids/suricata-command.sock
+
+# Rule files
+default-rule-path: /etc/vnids/rules
+rule-files:
+  - vnids-baseline.rules
+  - vnids-someip.rules
+  - vnids-doip.rules
+  - vnids-flood.rules
+  - vnids-anomaly.rules
+
+# Classification file
+classification-file: /etc/vnids/rules/classification.config
+
+# Reference file
+reference-config-file: /etc/vnids/rules/reference.config
+
+# Threshold file
+threshold-file: /etc/vnids/rules/threshold.config

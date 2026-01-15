@@ -1,0 +1,48 @@
+# VNIDS Android ARM64 Test Environment
+# Uses QEMU user-mode emulation for ARM64 testing
+
+ARG TARGETPLATFORM=linux/arm64
+FROM --platform=$TARGETPLATFORM ubuntu:22.04
+
+LABEL maintainer="VNIDS Authors"
+LABEL description="ARM64 test environment for VNIDS testing"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Install all dependencies including Suricata
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Suricata IDS (pre-built)
+    suricata \
+    # Python for tests
+    python3 \
+    python3-pip \
+    # Network tools
+    tcpdump \
+    tcpreplay \
+    iproute2 \
+    # Utilities
+    file \
+    binutils \
+    vim \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python test dependencies
+RUN pip3 install --no-cache-dir \
+    pytest \
+    pytest-timeout \
+    pyyaml \
+    scapy \
+    requests
+
+# Create directories
+RUN mkdir -p /workspace /data/vnids/bin /data/vnids/etc /data/vnids/rules /data/vnids/var/log
+
+# Verify suricata installation
+RUN suricata --build-info | head -5
+
+WORKDIR /workspace
+
+CMD ["/bin/bash"]

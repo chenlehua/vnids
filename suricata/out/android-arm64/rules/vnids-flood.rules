@@ -1,0 +1,91 @@
+# VNIDS Network Flood Detection Rules
+# Detection rules for various network flood attacks
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# ============================================
+# TCP SYN Flood Detection
+# ============================================
+
+# SYN flood - high rate of SYN packets from single source
+alert tcp any any -> $HOME_NET any (msg:"VNIDS TCP SYN Flood Detected"; flags:S,12; threshold:type both, track by_src, count 200, seconds 10; classtype:syn-flood; sid:1000001; rev:1;)
+
+# SYN flood to single destination
+alert tcp any any -> $HOME_NET any (msg:"VNIDS TCP SYN Flood to Single Host"; flags:S,12; threshold:type both, track by_dst, count 500, seconds 10; classtype:syn-flood; sid:1000002; rev:1;)
+
+# SYN-ACK flood (reflection attack indicator)
+alert tcp any any -> any any (msg:"VNIDS TCP SYN-ACK Flood Detected"; flags:SA; threshold:type both, track by_dst, count 500, seconds 10; classtype:syn-flood; sid:1000005; rev:1;)
+
+# ============================================
+# UDP Flood Detection
+# ============================================
+
+# UDP flood - high packet rate from single source
+alert udp any any -> $HOME_NET any (msg:"VNIDS UDP Flood Detected"; threshold:type both, track by_src, count 1000, seconds 10; classtype:udp-flood; sid:1000003; rev:1;)
+
+# UDP flood to single destination
+alert udp any any -> $HOME_NET any (msg:"VNIDS UDP Flood to Single Host"; threshold:type both, track by_dst, count 2000, seconds 10; classtype:udp-flood; sid:1000006; rev:1;)
+
+# DNS amplification attack (large DNS responses)
+alert udp any 53 -> any any (msg:"VNIDS Possible DNS Amplification Attack"; dsize:>512; threshold:type both, track by_dst, count 100, seconds 10; classtype:udp-flood; sid:1000007; rev:1;)
+
+# NTP amplification attack (monlist response)
+alert udp any 123 -> any any (msg:"VNIDS Possible NTP Amplification Attack"; dsize:>468; threshold:type both, track by_dst, count 50, seconds 10; classtype:udp-flood; sid:1000008; rev:1;)
+
+# ============================================
+# ICMP Flood Detection
+# ============================================
+
+# ICMP echo request flood (ping flood)
+alert icmp any any -> $HOME_NET any (msg:"VNIDS ICMP Flood Detected"; itype:8; threshold:type both, track by_src, count 200, seconds 10; classtype:icmp-flood; sid:1000004; rev:1;)
+
+# ICMP echo reply flood (potential smurf attack)
+alert icmp any any -> $HOME_NET any (msg:"VNIDS ICMP Echo Reply Flood"; itype:0; threshold:type both, track by_dst, count 500, seconds 10; classtype:icmp-flood; sid:1000009; rev:1;)
+
+# Large ICMP packets (ping of death variant)
+alert icmp any any -> $HOME_NET any (msg:"VNIDS Oversized ICMP Packet"; dsize:>1000; classtype:attempted-dos; sid:1000015; rev:1;)
+
+# ============================================
+# TCP RST/FIN Flood Detection
+# ============================================
+
+# RST flood
+alert tcp any any -> $HOME_NET any (msg:"VNIDS TCP RST Flood Detected"; flags:R; threshold:type both, track by_src, count 200, seconds 10; classtype:denial-of-service; sid:1000020; rev:1;)
+
+# FIN flood
+alert tcp any any -> $HOME_NET any (msg:"VNIDS TCP FIN Flood Detected"; flags:F; threshold:type both, track by_src, count 200, seconds 10; classtype:denial-of-service; sid:1000021; rev:1;)
+
+# ============================================
+# Connection Flood Detection
+# ============================================
+
+# TCP connection flood (many established connections from single source)
+alert tcp any any -> $HOME_NET any (msg:"VNIDS TCP Connection Flood"; flow:to_server,established; threshold:type both, track by_src, count 100, seconds 60; classtype:denial-of-service; sid:1000030; rev:1;)
+
+# HTTP request flood (many requests from single source)
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"VNIDS HTTP Request Flood"; flow:to_server,established; threshold:type both, track by_src, count 500, seconds 60; classtype:denial-of-service; sid:1000031; rev:1;)
+
+# Slowloris-style attack (many incomplete HTTP requests)
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"VNIDS Possible Slowloris Attack"; flow:to_server,established,no_stream; threshold:type both, track by_src, count 50, seconds 60; classtype:denial-of-service; sid:1000032; rev:1;)
+
+# ============================================
+# Fragmentation Attack Detection
+# ============================================
+
+# IP fragment flood
+alert ip any any -> $HOME_NET any (msg:"VNIDS IP Fragment Flood"; fragbits:M; threshold:type both, track by_src, count 500, seconds 10; classtype:denial-of-service; sid:1000040; rev:1;)
+
+# Teardrop-style overlapping fragments
+alert ip any any -> $HOME_NET any (msg:"VNIDS Suspicious IP Fragmentation"; fragbits:M; fragoffset:>0; dsize:<8; classtype:denial-of-service; sid:1000041; rev:1;)
+
+# ============================================
+# Bandwidth Exhaustion Detection
+# ============================================
+
+# High bandwidth usage from single source (any protocol)
+# Note: This is a heuristic and may need tuning per environment
+alert ip any any -> $HOME_NET any (msg:"VNIDS High Bandwidth from Single Source"; threshold:type both, track by_src, count 5000, seconds 10; classtype:denial-of-service; sid:1000050; rev:1;)
+
+# Large packet flood
+alert ip any any -> $HOME_NET any (msg:"VNIDS Large Packet Flood"; dsize:>1400; threshold:type both, track by_src, count 1000, seconds 10; classtype:denial-of-service; sid:1000051; rev:1;)

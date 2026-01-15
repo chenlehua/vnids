@@ -1,0 +1,42 @@
+# VNIDS Android SELinux Policy
+# Place in sepolicy/vendor or device-specific sepolicy
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Type declarations
+type vnidsd, domain;
+type vnidsd_exec, exec_type, vendor_file_type, file_type;
+type vnids_data_file, file_type, data_file_type;
+type vnids_socket, file_type;
+
+# Domain transition
+init_daemon_domain(vnidsd)
+
+# Execute Suricata
+allow vnidsd vendor_file:file { read execute execute_no_trans };
+
+# Network access
+allow vnidsd self:capability { net_raw net_admin };
+allow vnidsd self:rawip_socket create_socket_perms;
+allow vnidsd self:packet_socket create_socket_perms;
+allow vnidsd self:netlink_route_socket create_socket_perms;
+
+# Unix sockets
+allow vnidsd vnids_socket:sock_file { create unlink write };
+allow vnidsd vnidsd:unix_stream_socket { create bind listen accept read write };
+
+# Data files
+allow vnidsd vnids_data_file:dir create_dir_perms;
+allow vnidsd vnids_data_file:file create_file_perms;
+
+# Configuration files
+allow vnidsd vendor_configs_file:dir r_dir_perms;
+allow vnidsd vendor_configs_file:file r_file_perms;
+
+# Logging
+allow vnidsd vnids_data_file:dir { write add_name remove_name };
+allow vnidsd vnids_data_file:file { create write append };
+
+# SQLite database
+allow vnidsd vnids_data_file:file { lock };

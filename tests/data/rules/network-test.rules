@@ -1,0 +1,65 @@
+# VNIDS Test Rules - Network Security
+# Sample rules for general network threat detection
+
+# =============================================================================
+# Port Scanning Detection
+# =============================================================================
+
+# TCP SYN scan detection (threshold-based)
+alert tcp any any -> any any (msg:"VNIDS TEST - Possible Port Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 5; sid:9010001; rev:1; classtype:attempted-recon;)
+
+# NULL scan detection
+alert tcp any any -> any any (msg:"VNIDS TEST - TCP NULL Scan"; flags:0; sid:9010002; rev:1; classtype:attempted-recon;)
+
+# XMAS scan detection
+alert tcp any any -> any any (msg:"VNIDS TEST - TCP XMAS Scan"; flags:FPU; sid:9010003; rev:1; classtype:attempted-recon;)
+
+# FIN scan detection
+alert tcp any any -> any any (msg:"VNIDS TEST - TCP FIN Scan"; flags:F; sid:9010004; rev:1; classtype:attempted-recon;)
+
+# =============================================================================
+# Suspicious Connection Patterns
+# =============================================================================
+
+# Connection to known malicious port
+alert tcp any any -> any 4444 (msg:"VNIDS TEST - Connection to Metasploit Default Port"; sid:9011001; rev:1; classtype:trojan-activity;)
+
+# IRC botnet traffic
+alert tcp any any -> any 6667 (msg:"VNIDS TEST - IRC Connection"; flow:to_server,established; sid:9011002; rev:1;)
+
+# Tor network connection
+alert tcp any any -> any 9001 (msg:"VNIDS TEST - Possible Tor Connection"; flow:to_server,established; sid:9011003; rev:1;)
+
+# =============================================================================
+# DNS Anomalies
+# =============================================================================
+
+# Long DNS query (possible tunneling)
+alert udp any any -> any 53 (msg:"VNIDS TEST - Long DNS Query"; dsize:>100; sid:9012001; rev:1; classtype:policy-violation;)
+
+# DNS TXT record query (possible C2)
+alert udp any any -> any 53 (msg:"VNIDS TEST - DNS TXT Query"; content:"|00 10|"; offset:12; sid:9012002; rev:1;)
+
+# =============================================================================
+# TLS/SSL Anomalies
+# =============================================================================
+
+# Self-signed certificate warning (based on CN patterns)
+alert tls any any -> any any (msg:"VNIDS TEST - TLS Traffic Detected"; flow:to_server,established; sid:9013001; rev:1;)
+
+# =============================================================================
+# ICMP Anomalies
+# =============================================================================
+
+# Large ICMP packet (possible covert channel)
+alert icmp any any -> any any (msg:"VNIDS TEST - Large ICMP Packet"; dsize:>1000; sid:9014001; rev:1; classtype:policy-violation;)
+
+# ICMP flood detection
+alert icmp any any -> any any (msg:"VNIDS TEST - ICMP Flood"; threshold:type both, track by_src, count 50, seconds 5; sid:9014002; rev:1; classtype:attempted-dos;)
+
+# =============================================================================
+# Data Exfiltration Indicators
+# =============================================================================
+
+# Large outbound data transfer
+alert tcp any any -> any any (msg:"VNIDS TEST - Large Outbound Transfer"; flow:to_server,established; dsize:>50000; threshold:type both, track by_src, count 10, seconds 60; sid:9015001; rev:1;)

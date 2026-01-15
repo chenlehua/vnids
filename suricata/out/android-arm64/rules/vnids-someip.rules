@@ -1,0 +1,101 @@
+# VNIDS SOME/IP Detection Rules
+# Automotive SOME/IP Protocol Security Rules
+#
+# SOME/IP (Scalable service-Oriented MiddlewarE over IP) is used for
+# in-vehicle communication in modern automotive architectures.
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# ============================================
+# SOME/IP Protocol Constants
+# ============================================
+# SOME/IP Header: 8 bytes minimum
+# - Service ID (2 bytes)
+# - Method ID (2 bytes)
+# - Length (4 bytes)
+# - Client ID (2 bytes)
+# - Session ID (2 bytes)
+# - Protocol Version (1 byte) = 0x01
+# - Interface Version (1 byte)
+# - Message Type (1 byte)
+# - Return Code (1 byte)
+#
+# Message Types:
+# 0x00 = REQUEST
+# 0x01 = REQUEST_NO_RETURN
+# 0x02 = NOTIFICATION
+# 0x80 = RESPONSE
+# 0x81 = ERROR
+# 0xC0 = TP_REQUEST
+# 0xC1 = TP_REQUEST_NO_RETURN
+# 0xC2 = TP_NOTIFICATION
+# 0x40 = RESPONSE_ACK
+# 0x41 = ERROR_ACK
+
+# ============================================
+# SOME/IP Malformed Packet Detection
+# ============================================
+
+# SOME/IP packet with invalid protocol version (not 0x01)
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Invalid Protocol Version"; content:!"|01|"; offset:12; depth:1; classtype:someip-malformed; sid:2000010; rev:1;)
+
+# SOME/IP packet with length mismatch (header says more bytes than packet)
+# Note: This is a heuristic check
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Suspicious Length Field"; dsize:<16; classtype:someip-malformed; sid:2000011; rev:1;)
+
+# SOME/IP packet with invalid message type
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Invalid Message Type"; byte_test:1,&,0x3E,14; classtype:someip-malformed; sid:2000012; rev:1;)
+
+# SOME/IP packet with invalid return code in request
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Non-Zero Return Code in Request"; content:"|00|"; offset:14; depth:1; content:!"|00|"; offset:15; depth:1; classtype:someip-malformed; sid:2000013; rev:1;)
+
+# ============================================
+# SOME/IP Service Discovery Anomalies
+# ============================================
+
+# SOME/IP-SD uses Service ID 0xFFFF, Method ID 0x8100
+# Port 30490 is default for SD
+
+# SOME/IP-SD with suspicious entry count
+alert udp any any -> any 30490 (msg:"VNIDS SOME/IP-SD Excessive Entries"; content:"|ff ff 81 00|"; depth:4; byte_test:4,>,100,4; classtype:someip-sd-anomaly; sid:2000020; rev:1;)
+
+# SOME/IP-SD FindService flood
+alert udp any any -> any 30490 (msg:"VNIDS SOME/IP-SD FindService Flood"; content:"|ff ff 81 00|"; depth:4; threshold:type threshold, track by_src, count 100, seconds 10; classtype:someip-flood; sid:2000021; rev:1;)
+
+# SOME/IP-SD OfferService from unauthorized source
+# Customize $AUTHORIZED_SD_SOURCES for your network
+# alert udp !$AUTHORIZED_SD_SOURCES any -> any 30490 (msg:"VNIDS SOME/IP-SD Unauthorized OfferService"; content:"|ff ff 81 00|"; depth:4; content:"|01|"; offset:16; within:1; classtype:someip-unauthorized; sid:2000022; rev:1;)
+
+# ============================================
+# SOME/IP Unauthorized Access Detection
+# ============================================
+
+# Request to diagnostic service (Service ID 0x0001-0x00FF typically reserved)
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Request to Reserved Service Range"; content:"|00 0|"; depth:2; content:"|00|"; offset:14; depth:1; classtype:someip-unauthorized; sid:2000030; rev:1;)
+
+# SOME/IP request with privileged method (Method IDs 0x0001-0x00FF often privileged)
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Request to Privileged Method"; content:"|00 0|"; offset:2; depth:2; content:"|00|"; offset:14; depth:1; classtype:someip-unauthorized; sid:2000031; rev:1;)
+
+# ============================================
+# SOME/IP Flood Detection
+# ============================================
+
+# SOME/IP request flood to single service
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Request Flood Detected"; content:"|00|"; offset:14; depth:1; threshold:type threshold, track by_both, count 500, seconds 10; classtype:someip-flood; sid:2000001; rev:1;)
+
+# SOME/IP notification flood
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Notification Flood"; content:"|02|"; offset:14; depth:1; threshold:type threshold, track by_src, count 1000, seconds 10; classtype:someip-flood; sid:2000002; rev:1;)
+
+# ============================================
+# SOME/IP Error Response Monitoring
+# ============================================
+
+# SOME/IP Error Response (Message Type 0x81)
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP Error Response"; content:"|81|"; offset:14; depth:1; classtype:automotive-anomaly; sid:2000040; rev:1;)
+
+# SOME/IP with E_NOT_OK return code (0x01)
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP E_NOT_OK Return Code"; content:"|80|"; offset:14; depth:1; content:"|01|"; offset:15; depth:1; classtype:automotive-anomaly; sid:2000041; rev:1;)
+
+# SOME/IP with E_NOT_REACHABLE return code (0x05)
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS SOME/IP E_NOT_REACHABLE Return Code"; content:"|80|"; offset:14; depth:1; content:"|05|"; offset:15; depth:1; classtype:automotive-anomaly; sid:2000042; rev:1;)

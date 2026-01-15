@@ -1,0 +1,110 @@
+# VNIDS Anomaly Detection Rules
+# Network anomaly and suspicious behavior detection
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# ============================================
+# Traffic Anomaly Detection
+# ============================================
+
+# Unusual outbound traffic from internal hosts
+# alert tcp $HOME_NET any -> $EXTERNAL_NET !$HTTP_PORTS (msg:"VNIDS Unusual Outbound Connection"; flow:to_server,established; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; sid:4000010; rev:1;)
+
+# Traffic to bogon IP ranges
+alert ip any any -> [0.0.0.0/8,127.0.0.0/8,224.0.0.0/4] any (msg:"VNIDS Traffic to Bogon Address"; classtype:bad-unknown; sid:4000011; rev:1;)
+
+# Traffic with spoofed source (external IP from internal interface)
+# Note: Requires proper HOME_NET configuration
+# alert ip !$HOME_NET any -> any any (msg:"VNIDS Possible IP Spoofing"; classtype:bad-unknown; sid:4000012; rev:1;)
+
+# ============================================
+# Protocol Anomaly Detection
+# ============================================
+
+# HTTP on non-standard port
+alert tcp any any -> any !$HTTP_PORTS (msg:"VNIDS HTTP on Non-Standard Port"; flow:to_server,established; content:"HTTP/"; offset:0; depth:5; classtype:non-standard-protocol; sid:4000020; rev:1;)
+
+# SSH on non-standard port
+alert tcp any any -> any !22 (msg:"VNIDS SSH on Non-Standard Port"; flow:to_server,established; content:"SSH-"; offset:0; depth:4; classtype:non-standard-protocol; sid:4000021; rev:1;)
+
+# DNS over non-standard port (possible tunneling)
+alert udp any any -> any !53 (msg:"VNIDS DNS on Non-Standard Port"; content:"|00 00 01 00 00 01|"; offset:2; depth:6; classtype:non-standard-protocol; sid:4000022; rev:1;)
+
+# ============================================
+# Payload Anomaly Detection
+# ============================================
+
+# Binary data in HTTP request body
+alert http any any -> $HOME_NET any (msg:"VNIDS Binary Data in HTTP Request"; flow:to_server,established; http.request_body; content:"|00 00 00|"; classtype:misc-activity; sid:4000030; rev:1;)
+
+# Executable download (PE header)
+alert http any any -> any any (msg:"VNIDS Windows Executable Download"; flow:to_client,established; file_data; content:"MZ"; depth:2; content:"PE|00 00|"; distance:0; classtype:policy-violation; sid:4000031; rev:1;)
+
+# ELF executable download
+alert http any any -> any any (msg:"VNIDS Linux Executable Download"; flow:to_client,established; file_data; content:"|7f|ELF"; depth:4; classtype:policy-violation; sid:4000032; rev:1;)
+
+# Script download
+alert http any any -> any any (msg:"VNIDS Script Download Detected"; flow:to_client,established; file_data; pcre:"/^#!\/.*\/(bash|sh|python|perl)/"; classtype:policy-violation; sid:4000033; rev:1;)
+
+# ============================================
+# Timing Anomaly Detection
+# ============================================
+
+# Connection at unusual time (placeholder - requires external logic)
+# This would typically be implemented at the application layer
+
+# Rapid connection cycling
+alert tcp any any -> $HOME_NET any (msg:"VNIDS Rapid TCP Connection Cycling"; flags:S; threshold:type both, track by_both, count 20, seconds 5; classtype:misc-activity; sid:4000040; rev:1;)
+
+# ============================================
+# Session Anomaly Detection
+# ============================================
+
+# Long-running TCP session (potential C2)
+# Note: This requires flow timeout tracking in the engine
+# alert tcp any any -> any any (msg:"VNIDS Long-Running TCP Session"; flow:established; classtype:misc-activity; sid:4000050; rev:1;)
+
+# Session with no application data
+alert tcp any any -> $HOME_NET any (msg:"VNIDS TCP Session with No Data"; flow:established,no_stream; threshold:type threshold, track by_both, count 10, seconds 60; classtype:misc-activity; sid:4000051; rev:1;)
+
+# ============================================
+# Volume Anomaly Detection
+# ============================================
+
+# Large data transfer outbound
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"VNIDS Large Outbound Data Transfer"; flow:to_server,established; dsize:>50000; threshold:type both, track by_src, count 10, seconds 60; classtype:misc-activity; sid:4000060; rev:1;)
+
+# High packet rate to single destination
+alert ip any any -> $HOME_NET any (msg:"VNIDS High Packet Rate to Single Host"; threshold:type both, track by_dst, count 10000, seconds 60; classtype:misc-activity; sid:4000061; rev:1;)
+
+# ============================================
+# ARP Anomaly Detection
+# ============================================
+
+# Note: ARP detection requires special handling and may not work with all capture methods
+
+# ============================================
+# Application Layer Anomalies
+# ============================================
+
+# HTTP response with error status and large body (potential data exfil)
+alert http any any -> any any (msg:"VNIDS Large HTTP Error Response"; flow:to_client,established; http.stat_code; content:"5"; depth:1; http.response_body; dsize:>10000; classtype:misc-activity; sid:4000070; rev:1;)
+
+# Multiple HTTP 401/403 responses (brute force indicator)
+alert http any $HTTP_PORTS -> any any (msg:"VNIDS Multiple HTTP Auth Failures"; flow:to_client,established; http.stat_code; pcre:"/^40[13]$/"; threshold:type threshold, track by_src, count 10, seconds 60; classtype:attempted-user; sid:4000071; rev:1;)
+
+# ============================================
+# Automotive Network Anomalies
+# ============================================
+
+# Unexpected SOME/IP service (not in allowed list)
+# Note: Requires customization with allowed service IDs
+# alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS Unexpected SOME/IP Service"; threshold:type limit, track by_both, count 1, seconds 300; classtype:automotive-anomaly; sid:4000080; rev:1;)
+
+# DoIP traffic from unexpected source
+# Note: Requires customization with allowed diagnostic sources
+# alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP from Unexpected Source"; threshold:type limit, track by_src, count 1, seconds 300; classtype:automotive-anomaly; sid:4000081; rev:1;)
+
+# High rate of automotive protocol errors
+alert udp any any -> any $SOMEIP_PORTS (msg:"VNIDS High SOME/IP Error Rate"; content:"|81|"; offset:14; depth:1; threshold:type both, track by_dst, count 50, seconds 60; classtype:automotive-anomaly; sid:4000082; rev:1;)

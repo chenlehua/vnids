@@ -1,0 +1,27 @@
+# VNIDS Test Dependencies
+# Python packages for unit and integration testing
+
+# Test framework
+pytest>=7.0.0
+pytest-timeout>=2.1.0
+pytest-cov>=4.0.0
+
+# Network packet handling
+scapy>=2.5.0
+dpkt>=1.9.8
+
+# Configuration and data parsing
+pyyaml>=6.0
+jsonschema>=4.0.0
+
+# HTTP client for API testing
+requests>=2.28.0
+
+# Async testing
+pytest-asyncio>=0.21.0
+
+# Process management
+psutil>=5.9.0
+
+# Logging and output
+colorama>=0.4.6

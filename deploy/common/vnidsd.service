@@ -1,0 +1,33 @@
+[Unit]
+Description=VNIDS - Vehicle Network Intrusion Detection System
+Documentation=https://vnids.io/docs
+After=network.target
+
+[Service]
+Type=simple
+User=vnids
+Group=vnids
+ExecStart=/usr/local/bin/vnidsd -c /etc/vnids/vnidsd.conf
+ExecReload=/bin/kill -SIGHUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Allow network capture
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+
+# File system access
+ReadWritePaths=/var/lib/vnids /var/log/vnids /var/run/vnids
+ReadOnlyPaths=/etc/vnids
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vnids.example.com/schemas/security-event.json",
+  "title": "SecurityEvent",
+  "description": "A detected security incident from VNIDS",
+  "type": "object",
+  "required": [
+    "id",
+    "timestamp",
+    "event_type",
+    "severity",
+    "src_addr",
+    "dst_addr",
+    "protocol",
+    "message"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with microsecond precision"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": ["alert", "anomaly", "flow", "stats"],
+      "description": "Type of security event"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info"],
+      "description": "Event severity level"
+    },
+    "src_addr": {
+      "type": "string",
+      "description": "Source IP address (IPv4 or IPv6)"
+    },
+    "src_port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Source port number"
+    },
+    "dst_addr": {
+      "type": "string",
+      "description": "Destination IP address (IPv4 or IPv6)"
+    },
+    "dst_port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Destination port number"
+    },
+    "protocol": {
+      "type": "string",
+      "enum": ["tcp", "udp", "icmp", "igmp", "someip", "doip", "gbt32960", "http", "tls", "dns", "mqtt", "ftp", "telnet", "unknown"],
+      "description": "Network or application protocol"
+    },
+    "rule_sid": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Suricata Signature ID that triggered the event"
+    },
+    "rule_gid": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Suricata Generator ID"
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Human-readable alert message"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Protocol-specific context",
+      "additionalProperties": true,
+      "properties": {
+        "someip": {
+          "$ref": "#/$defs/SomeIpMetadata"
+        },
+        "doip": {
+          "$ref": "#/$defs/DoIpMetadata"
+        },
+        "gbt32960": {
+          "$ref": "#/$defs/Gbt32960Metadata"
+        },
+        "http": {
+          "$ref": "#/$defs/HttpMetadata"
+        },
+        "dns": {
+          "$ref": "#/$defs/DnsMetadata"
+        },
+        "flood": {
+          "$ref": "#/$defs/FloodMetadata"
+        }
+      }
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Related protocol session ID"
+    },
+    "packet_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash of packet payload (first 256 bytes)"
+    }
+  },
+  "$defs": {
+    "SomeIpMetadata": {
+      "type": "object",
+      "description": "SOME/IP protocol-specific fields",
+      "properties": {
+        "service_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "SOME/IP Service ID"
+        },
+        "method_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "SOME/IP Method ID"
+        },
+        "client_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "SOME/IP Client ID"
+        },
+        "session_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "SOME/IP Session ID"
+        },
+        "message_type": {
+          "type": "string",
+          "enum": ["REQUEST", "REQUEST_NO_RETURN", "NOTIFICATION", "RESPONSE", "ERROR", "TP_REQUEST", "TP_REQUEST_NO_RETURN", "TP_NOTIFICATION", "TP_RESPONSE", "TP_ERROR"],
+          "description": "SOME/IP message type"
+        },
+        "return_code": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "SOME/IP return code"
+        }
+      }
+    },
+    "DoIpMetadata": {
+      "type": "object",
+      "description": "DoIP protocol-specific fields",
+      "properties": {
+        "payload_type": {
+          "type": "string",
+          "pattern": "^0x[0-9A-Fa-f]{4}$",
+          "description": "DoIP payload type (hex)"
+        },
+        "source_address": {
+          "type": "string",
+          "pattern": "^0x[0-9A-Fa-f]{4}$",
+          "description": "DoIP source address (hex)"
+        },
+        "target_address": {
+          "type": "string",
+          "pattern": "^0x[0-9A-Fa-f]{4}$",
+          "description": "DoIP target address (hex)"
+        },
+        "uds_service": {
+          "type": "string",
+          "pattern": "^0x[0-9A-Fa-f]{2}$",
+          "description": "UDS service ID if diagnostic message"
+        },
+        "activation_type": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Routing activation type"
+        }
+      }
+    },
+    "Gbt32960Metadata": {
+      "type": "object",
+      "description": "GB/T 32960.3 protocol-specific fields",
+      "properties": {
+        "command": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "GB/T 32960.3 command byte"
+        },
+        "command_name": {
+          "type": "string",
+          "enum": ["LOGIN", "REALTIME_DATA", "REISSUE_DATA", "LOGOUT", "PLATFORM_LOGIN", "PLATFORM_LOGOUT", "HEARTBEAT", "TERMINAL_TIME_SYNC"],
+          "description": "Human-readable command name"
+        },
+        "vin": {
+          "type": "string",
+          "pattern": "^[A-HJ-NPR-Z0-9]{17}$",
+          "description": "Vehicle Identification Number"
+        },
+        "encryption": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Encryption method (0x01=none, 0x02=RSA, 0x03=AES)"
+        }
+      }
+    },
+    "HttpMetadata": {
+      "type": "object",
+      "description": "HTTP protocol-specific fields",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "CONNECT", "TRACE"],
+          "description": "HTTP method"
+        },
+        "uri": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "Request URI"
+        },
+        "host": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Host header value"
+        },
+        "user_agent": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "User-Agent header value"
+        },
+        "status_code": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599,
+          "description": "HTTP response status code"
+        },
+        "content_type": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Content-Type header value"
+        }
+      }
+    },
+    "DnsMetadata": {
+      "type": "object",
+      "description": "DNS protocol-specific fields",
+      "properties": {
+        "query_type": {
+          "type": "string",
+          "enum": ["A", "AAAA", "CNAME", "MX", "NS", "PTR", "SOA", "SRV", "TXT", "ANY"],
+          "description": "DNS query type"
+        },
+        "query_name": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Queried domain name"
+        },
+        "response_code": {
+          "type": "string",
+          "enum": ["NOERROR", "FORMERR", "SERVFAIL", "NXDOMAIN", "NOTIMP", "REFUSED"],
+          "description": "DNS response code"
+        },
+        "answers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "DNS answer records"
+        }
+      }
+    },
+    "FloodMetadata": {
+      "type": "object",
+      "description": "Flood attack detection fields",
+      "properties": {
+        "attack_type": {
+          "type": "string",
+          "enum": ["syn_flood", "ack_flood", "udp_flood", "icmp_flood", "igmp_flood"],
+          "description": "Type of flood attack"
+        },
+        "packet_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of packets in detection window"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Detection window duration in milliseconds"
+        },
+        "pps_rate": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Packets per second rate"
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Configured threshold that was exceeded"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "timestamp": "2026-01-15T10:30:45.123456Z",
+      "event_type": "alert",
+      "severity": "high",
+      "src_addr": "192.168.1.100",
+      "src_port": 49152,
+      "dst_addr": "192.168.1.10",
+      "dst_port": 13400,
+      "protocol": "doip",
+      "rule_sid": 2000001,
+      "rule_gid": 1,
+      "message": "DoIP routing activation from external",
+      "metadata": {
+        "doip": {
+          "payload_type": "0x0005",
+          "source_address": "0x0E80",
+          "activation_type": 0
+        }
+      },
+      "session_id": "550e8400-e29b-41d4-a716-446655440001"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "timestamp": "2026-01-15T10:31:00.000000Z",
+      "event_type": "alert",
+      "severity": "critical",
+      "src_addr": "10.0.0.50",
+      "src_port": 12345,
+      "dst_addr": "192.168.1.1",
+      "dst_port": 80,
+      "protocol": "tcp",
+      "rule_sid": 1000001,
+      "rule_gid": 1,
+      "message": "TCP SYN flood detected",
+      "metadata": {
+        "flood": {
+          "attack_type": "syn_flood",
+          "packet_count": 15420,
+          "duration_ms": 1000,
+          "pps_rate": 15420,
+          "threshold": 1000
+        }
+      }
+    }
+  ]
+}

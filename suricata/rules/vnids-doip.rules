@@ -1,0 +1,118 @@
+# VNIDS DoIP Detection Rules
+# Automotive Diagnostics over IP (DoIP) Protocol Security Rules
+#
+# DoIP (ISO 13400) is used for vehicle diagnostics over IP networks,
+# enabling remote diagnostics and ECU programming.
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# ============================================
+# DoIP Protocol Constants
+# ============================================
+# DoIP uses TCP port 13400 (data) and UDP port 13400 (vehicle identification)
+#
+# DoIP Header: 8 bytes
+# - Protocol Version (1 byte) = 0x02 for ISO 13400-2:2012
+# - Inverse Protocol Version (1 byte) = 0xFD (inverse of version)
+# - Payload Type (2 bytes)
+# - Payload Length (4 bytes)
+#
+# Common Payload Types:
+# 0x0000 = Generic DoIP header negative acknowledge
+# 0x0001 = Vehicle identification request
+# 0x0002 = Vehicle identification request with EID
+# 0x0003 = Vehicle identification request with VIN
+# 0x0004 = Vehicle announcement/identification response
+# 0x0005 = Routing activation request
+# 0x0006 = Routing activation response
+# 0x0007 = Alive check request
+# 0x0008 = Alive check response
+# 0x4001 = DoIP entity status request
+# 0x4002 = DoIP entity status response
+# 0x8001 = Diagnostic message
+# 0x8002 = Diagnostic message positive acknowledge
+# 0x8003 = Diagnostic message negative acknowledge
+
+# ============================================
+# DoIP Malformed Packet Detection
+# ============================================
+
+# DoIP with invalid protocol version
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Invalid Protocol Version"; flow:to_server,established; content:!"|02 fd|"; depth:2; classtype:doip-malformed; sid:3000010; rev:1;)
+
+alert udp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Invalid Protocol Version (UDP)"; content:!"|02 fd|"; depth:2; classtype:doip-malformed; sid:3000011; rev:1;)
+
+# DoIP with mismatched version bytes (version XOR inverse != 0xFF)
+# This would require more complex detection
+
+# DoIP with excessive payload length
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Excessive Payload Length"; flow:to_server,established; content:"|02 fd|"; depth:2; byte_test:4,>,65535,4; classtype:doip-malformed; sid:3000012; rev:1;)
+
+# ============================================
+# DoIP Vehicle Identification Anomalies
+# ============================================
+
+# Vehicle identification request flood (UDP)
+alert udp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Vehicle ID Request Flood"; content:"|02 fd 00 01|"; depth:4; threshold:type threshold, track by_src, count 50, seconds 10; classtype:doip-unauthorized; sid:3000020; rev:1;)
+
+# Vehicle identification with VIN request (potential reconnaissance)
+alert udp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Vehicle ID by VIN Request"; content:"|02 fd 00 03|"; depth:4; classtype:doip-diagnostic; sid:3000021; rev:1;)
+
+# Vehicle identification with EID request (potential reconnaissance)
+alert udp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Vehicle ID by EID Request"; content:"|02 fd 00 02|"; depth:4; classtype:doip-diagnostic; sid:3000022; rev:1;)
+
+# ============================================
+# DoIP Routing Activation Security
+# ============================================
+
+# Routing activation request
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Routing Activation Request"; flow:to_server,established; content:"|02 fd 00 05|"; depth:4; classtype:doip-diagnostic; sid:3000001; rev:1;)
+
+# Multiple routing activation attempts (brute force)
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Multiple Routing Activation Attempts"; flow:to_server,established; content:"|02 fd 00 05|"; depth:4; threshold:type threshold, track by_src, count 10, seconds 60; classtype:doip-unauthorized; sid:3000030; rev:1;)
+
+# Routing activation with unknown activation type
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Unknown Activation Type"; flow:to_server,established; content:"|02 fd 00 05|"; depth:4; byte_test:1,>,0x01,17; classtype:doip-malformed; sid:3000031; rev:1;)
+
+# ============================================
+# DoIP Diagnostic Message Security
+# ============================================
+
+# DoIP diagnostic message
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Diagnostic Message"; flow:to_server,established; content:"|02 fd 80 01|"; depth:4; classtype:doip-diagnostic; sid:3000002; rev:1;)
+
+# UDS Security Access request (Service 0x27) via DoIP
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP UDS Security Access Request"; flow:to_server,established; content:"|02 fd 80 01|"; depth:4; content:"|27|"; offset:12; depth:1; classtype:doip-diagnostic; sid:3000040; rev:1;)
+
+# UDS ECU Reset request (Service 0x11) via DoIP
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP UDS ECU Reset Request"; flow:to_server,established; content:"|02 fd 80 01|"; depth:4; content:"|11|"; offset:12; depth:1; classtype:doip-unauthorized; sid:3000041; rev:1;)
+
+# UDS Write Data request (Service 0x2E) via DoIP
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP UDS Write Data Request"; flow:to_server,established; content:"|02 fd 80 01|"; depth:4; content:"|2e|"; offset:12; depth:1; classtype:doip-unauthorized; sid:3000042; rev:1;)
+
+# UDS Request Download (Service 0x34) via DoIP - Firmware update
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP UDS Request Download"; flow:to_server,established; content:"|02 fd 80 01|"; depth:4; content:"|34|"; offset:12; depth:1; classtype:doip-unauthorized; sid:3000043; rev:1;)
+
+# UDS Request Upload (Service 0x35) via DoIP - Data extraction
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP UDS Request Upload"; flow:to_server,established; content:"|02 fd 80 01|"; depth:4; content:"|35|"; offset:12; depth:1; classtype:doip-diagnostic; sid:3000044; rev:1;)
+
+# UDS Routine Control (Service 0x31) via DoIP
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP UDS Routine Control Request"; flow:to_server,established; content:"|02 fd 80 01|"; depth:4; content:"|31|"; offset:12; depth:1; classtype:doip-diagnostic; sid:3000045; rev:1;)
+
+# ============================================
+# DoIP Alive Check
+# ============================================
+
+# Alive check request flood
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Alive Check Flood"; flow:to_server,established; content:"|02 fd 00 07|"; depth:4; threshold:type threshold, track by_src, count 100, seconds 10; classtype:automotive-flood; sid:3000050; rev:1;)
+
+# ============================================
+# DoIP Negative Acknowledge Monitoring
+# ============================================
+
+# DoIP header negative acknowledge
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Header Negative Acknowledge"; flow:to_client,established; content:"|02 fd 00 00|"; depth:4; classtype:automotive-anomaly; sid:3000060; rev:1;)
+
+# DoIP diagnostic message negative acknowledge
+alert tcp any any -> any $DOIP_PORTS (msg:"VNIDS DoIP Diagnostic Negative Acknowledge"; flow:to_client,established; content:"|02 fd 80 03|"; depth:4; classtype:automotive-anomaly; sid:3000061; rev:1;)

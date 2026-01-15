@@ -1,0 +1,80 @@
+# VNIDS Test Configuration
+# Configuration for integration and unit testing
+
+daemon:
+  # Daemon settings
+  pid_file: /tmp/vnids-test/vnids.pid
+  log_level: debug
+  log_file: /tmp/vnids-test/vnids.log
+  foreground: true
+
+  # Watchdog settings
+  watchdog:
+    enabled: true
+    timeout_sec: 30
+    max_restarts: 3
+    restart_window_sec: 300
+
+suricata:
+  # Suricata process settings
+  binary: /data/vnids/bin/suricata
+  config: /data/vnids/etc/suricata.yaml
+  rules_dir: /data/vnids/rules
+  log_dir: /tmp/vnids-test/suricata
+
+  # Process management
+  auto_start: true
+  restart_on_failure: true
+
+  # EVE log settings
+  eve_socket: /tmp/vnids-test/eve.sock
+
+ipc:
+  # Unix socket IPC settings
+  socket_path: /tmp/vnids-test/vnids.sock
+  timeout_ms: 5000
+  max_connections: 10
+
+  # Message limits
+  max_message_size: 65536
+  queue_size: 1024
+
+events:
+  # Event processing settings
+  queue_size: 4096
+  batch_size: 100
+  flush_interval_ms: 1000
+
+  # Storage settings
+  storage_path: /tmp/vnids-test/events.db
+  max_events: 100000
+  retention_days: 7
+
+  # Filtering
+  min_severity: 4  # 1=critical, 5=info
+  exclude_categories: []
+
+capture:
+  # Packet capture settings (optional)
+  enabled: false
+  interface: eth0
+  promiscuous: true
+  buffer_size_mb: 64
+  snaplen: 65535
+
+api:
+  # Control API settings
+  enabled: true
+  socket_path: /tmp/vnids-test/api.sock
+
+  # Authentication (optional)
+  auth_enabled: false
+
+logging:
+  # Logging configuration
+  level: debug
+  format: json
+  outputs:
+    - type: file
+      path: /tmp/vnids-test/vnids.log
+    - type: stdout

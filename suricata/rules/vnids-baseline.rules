@@ -1,0 +1,97 @@
+# VNIDS Baseline Detection Rules
+# Core security rules for network intrusion detection
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# ============================================
+# Network Reconnaissance Detection
+# ============================================
+
+# Port scan detection (multiple ports from same source)
+alert tcp any any -> $HOME_NET any (msg:"VNIDS Port Scan Detected"; flags:S; threshold:type threshold, track by_src, count 20, seconds 10; classtype:network-scan; sid:1000010; rev:1;)
+
+# ICMP sweep detection
+alert icmp any any -> $HOME_NET any (msg:"VNIDS ICMP Network Sweep"; itype:8; threshold:type threshold, track by_src, count 50, seconds 30; classtype:network-scan; sid:1000011; rev:1;)
+
+# ============================================
+# Suspicious Connection Detection
+# ============================================
+
+# Connection to known malicious ports
+alert tcp $HOME_NET any -> any [4444,5555,6666,7777,31337] (msg:"VNIDS Connection to Suspicious Port"; flow:to_server,established; classtype:trojan-activity; sid:1000020; rev:1;)
+
+# Reverse shell detection (common patterns)
+alert tcp any any -> $HOME_NET any (msg:"VNIDS Possible Reverse Shell"; flow:established; content:"/bin/sh"; nocase; classtype:trojan-activity; sid:1000021; rev:1;)
+
+# ============================================
+# Protocol Anomaly Detection
+# ============================================
+
+# TCP with invalid flag combinations
+alert tcp any any -> any any (msg:"VNIDS Invalid TCP Flags - SYN+FIN"; flags:SF; classtype:protocol-command-decode; sid:1000030; rev:1;)
+
+alert tcp any any -> any any (msg:"VNIDS Invalid TCP Flags - SYN+RST"; flags:SR; classtype:protocol-command-decode; sid:1000031; rev:1;)
+
+alert tcp any any -> any any (msg:"VNIDS NULL TCP Flags"; flags:0; classtype:protocol-command-decode; sid:1000032; rev:1;)
+
+alert tcp any any -> any any (msg:"VNIDS XMAS TCP Flags"; flags:FPU; classtype:protocol-command-decode; sid:1000033; rev:1;)
+
+# ============================================
+# DNS Anomaly Detection
+# ============================================
+
+# DNS query for suspicious TLD
+alert dns any any -> any any (msg:"VNIDS DNS Query for Suspicious TLD"; dns.query; content:".onion"; nocase; classtype:policy-violation; sid:1000040; rev:1;)
+
+# Excessively long DNS query (possible tunneling)
+alert dns any any -> any any (msg:"VNIDS Long DNS Query - Possible Tunneling"; dns.query; content:"|00|"; offset:128; classtype:policy-violation; sid:1000041; rev:1;)
+
+# DNS response with many answers (possible DNS amplification)
+alert dns any any -> any any (msg:"VNIDS DNS Response with Many Answers"; flow:to_client; dns.rrtype:ANY; threshold:type threshold, track by_src, count 100, seconds 10; classtype:attempted-dos; sid:1000042; rev:1;)
+
+# ============================================
+# HTTP Security
+# ============================================
+
+# SQL injection attempt
+alert http any any -> $HOME_NET any (msg:"VNIDS SQL Injection Attempt"; flow:to_server,established; http.uri; pcre:"/(\%27)|(\')|(\-\-)|(\%23)|(#)/i"; classtype:web-application-attack; sid:1000050; rev:1;)
+
+# XSS attempt
+alert http any any -> $HOME_NET any (msg:"VNIDS XSS Attempt"; flow:to_server,established; http.uri; content:"<script"; nocase; classtype:web-application-attack; sid:1000051; rev:1;)
+
+# Directory traversal attempt
+alert http any any -> $HOME_NET any (msg:"VNIDS Directory Traversal Attempt"; flow:to_server,established; http.uri; content:".."; content:"/"; classtype:web-application-attack; sid:1000052; rev:1;)
+
+# Command injection attempt
+alert http any any -> $HOME_NET any (msg:"VNIDS Command Injection Attempt"; flow:to_server,established; http.uri; pcre:"/[\|\;\`\$\(\)]/"; classtype:web-application-attack; sid:1000053; rev:1;)
+
+# ============================================
+# TLS/SSL Security
+# ============================================
+
+# Weak TLS version (SSLv3)
+alert tls any any -> any any (msg:"VNIDS SSLv3 Detected - Weak Protocol"; tls.version:SSLv3; classtype:policy-violation; sid:1000060; rev:1;)
+
+# Self-signed certificate (informational)
+alert tls any any -> any any (msg:"VNIDS Self-Signed Certificate Detected"; tls.cert_subject; tls.cert_issuer; pcre:"/^(.*)$/s"; classtype:policy-violation; sid:1000061; rev:1;)
+
+# ============================================
+# MQTT (IoT Protocol) Security
+# ============================================
+
+# MQTT connect with no authentication
+alert tcp any any -> any 1883 (msg:"VNIDS MQTT Connect Without Authentication"; flow:to_server,established; content:"|10|"; depth:1; content:"|00 04|MQTT"; distance:1; within:6; classtype:policy-violation; sid:1000070; rev:1;)
+
+# MQTT subscribe to wildcard topic
+alert tcp any any -> any 1883 (msg:"VNIDS MQTT Subscribe to Wildcard Topic"; flow:to_server,established; content:"|82|"; depth:1; content:"#"; classtype:policy-violation; sid:1000071; rev:1;)
+
+# ============================================
+# Telnet Security
+# ============================================
+
+# Telnet login attempt
+alert tcp any any -> $HOME_NET 23 (msg:"VNIDS Telnet Login Attempt"; flow:to_server,established; content:"login"; nocase; classtype:suspicious-login; sid:1000080; rev:1;)
+
+# Telnet brute force
+alert tcp any any -> $HOME_NET 23 (msg:"VNIDS Telnet Brute Force Attempt"; flow:to_server,established; content:"incorrect"; nocase; threshold:type threshold, track by_src, count 5, seconds 60; classtype:attempted-user; sid:1000081; rev:1;)

@@ -1,0 +1,60 @@
+# VNIDS Test Rules - Automotive Protocol Detection
+# Sample rules for testing automotive-specific traffic
+
+# =============================================================================
+# SOME/IP Protocol Rules
+# =============================================================================
+
+# SOME/IP service discovery
+alert udp any any -> any 30490 (msg:"VNIDS TEST - SOME/IP Service Discovery"; content:"|FF FF|"; offset:0; depth:2; sid:9001001; rev:1;)
+
+# SOME/IP method call
+alert udp any any -> any 30490:30499 (msg:"VNIDS TEST - SOME/IP Method Call"; content:"|00 00 00|"; offset:4; depth:3; sid:9001002; rev:1;)
+
+# SOME/IP notification
+alert udp any any -> any 30490:30499 (msg:"VNIDS TEST - SOME/IP Notification"; byte_test:1,=,0x02,14; sid:9001003; rev:1;)
+
+# SOME/IP error response
+alert udp any any -> any 30490:30499 (msg:"VNIDS TEST - SOME/IP Error Response"; byte_test:1,>,0x00,15; sid:9001004; rev:1; classtype:protocol-command-decode;)
+
+# =============================================================================
+# DoIP Protocol Rules
+# =============================================================================
+
+# DoIP vehicle identification request
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - DoIP Vehicle ID Request"; content:"|02 FD 00 01|"; offset:0; depth:4; sid:9002001; rev:1;)
+
+# DoIP diagnostic message
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - DoIP Diagnostic Message"; content:"|02 FD 80 01|"; offset:0; depth:4; sid:9002002; rev:1;)
+
+# DoIP routing activation
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - DoIP Routing Activation"; content:"|02 FD 00 05|"; offset:0; depth:4; sid:9002003; rev:1;)
+
+# DoIP negative response
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - DoIP Negative Response"; content:"|02 FD 00 04|"; offset:0; depth:4; byte_test:1,>,0x00,8; sid:9002004; rev:1;)
+
+# =============================================================================
+# UDS (Unified Diagnostic Services) Rules
+# =============================================================================
+
+# UDS security access request
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - UDS Security Access Request"; content:"|27|"; offset:8; depth:1; sid:9003001; rev:1; classtype:protocol-command-decode;)
+
+# UDS ECU reset
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - UDS ECU Reset Command"; content:"|11|"; offset:8; depth:1; sid:9003002; rev:1; classtype:protocol-command-decode;)
+
+# UDS write memory
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - UDS Write Memory Command"; content:"|3D|"; offset:8; depth:1; sid:9003003; rev:1; classtype:protocol-command-decode;)
+
+# UDS request download
+alert tcp any any -> any 13400 (msg:"VNIDS TEST - UDS Request Download"; content:"|34|"; offset:8; depth:1; sid:9003004; rev:1; classtype:protocol-command-decode;)
+
+# =============================================================================
+# CAN-related Rules (encapsulated in IP)
+# =============================================================================
+
+# CAN diagnostic request (OBD-II)
+alert udp any any -> any any (msg:"VNIDS TEST - CAN OBD-II Request"; content:"|07 DF|"; offset:0; depth:2; sid:9004001; rev:1;)
+
+# CAN broadcast message
+alert udp any any -> any any (msg:"VNIDS TEST - CAN Broadcast"; content:"|07 FF|"; offset:0; depth:2; sid:9004002; rev:1;)

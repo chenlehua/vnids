@@ -1,0 +1,22 @@
+# VNIDS Android Init Script
+# Place in device tree or vendor overlay
+#
+# Copyright (c) 2026 VNIDS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+service vnidsd /vendor/bin/vnidsd -c /vendor/etc/vnids/vnidsd.conf
+    class main
+    user system
+    group system inet net_raw net_admin
+    capabilities NET_RAW NET_ADMIN
+    socket api stream 0660 system system
+    socket eve stream 0660 system system
+    writepid /dev/cpuset/system-background/tasks
+
+on property:sys.boot_completed=1
+    # Create runtime directories
+    mkdir /data/vendor/vnids 0750 system system
+    mkdir /data/vendor/vnids/log 0750 system system
+
+    # Start VNIDS daemon
+    start vnidsd

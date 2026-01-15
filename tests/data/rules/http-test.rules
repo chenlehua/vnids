@@ -1,0 +1,23 @@
+# VNIDS Test Rules - HTTP Detection
+# Sample rules for testing HTTP traffic detection
+
+# Basic HTTP request detection
+alert http any any -> any any (msg:"VNIDS TEST - HTTP GET Request"; flow:to_server,established; http.method; content:"GET"; sid:9000001; rev:1;)
+
+# HTTP POST detection
+alert http any any -> any any (msg:"VNIDS TEST - HTTP POST Request"; flow:to_server,established; http.method; content:"POST"; sid:9000002; rev:1;)
+
+# Suspicious User-Agent
+alert http any any -> any any (msg:"VNIDS TEST - Suspicious User-Agent"; flow:to_server,established; http.user_agent; content:"curl"; nocase; sid:9000003; rev:1;)
+
+# Directory traversal attempt
+alert http any any -> any any (msg:"VNIDS TEST - Directory Traversal Attempt"; flow:to_server,established; http.uri; content:"../"; sid:9000004; rev:1; classtype:web-application-attack;)
+
+# SQL injection attempt
+alert http any any -> any any (msg:"VNIDS TEST - Possible SQL Injection"; flow:to_server,established; http.uri; content:"UNION"; nocase; content:"SELECT"; nocase; distance:0; sid:9000005; rev:1; classtype:web-application-attack;)
+
+# Shell command injection
+alert http any any -> any any (msg:"VNIDS TEST - Shell Command Injection"; flow:to_server,established; http.uri; pcre:"/[;&|`$].*?(cat|ls|pwd|id|whoami)/i"; sid:9000006; rev:1; classtype:web-application-attack;)
+
+# Large POST body (possible data exfiltration)
+alert http any any -> any any (msg:"VNIDS TEST - Large HTTP POST"; flow:to_server,established; http.method; content:"POST"; http.content_len; content:">"; byte_test:0,>,1000000,0,string; sid:9000007; rev:1;)
