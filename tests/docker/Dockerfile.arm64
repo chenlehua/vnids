@@ -11,10 +11,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
 # Configure Chinese APT mirror for faster downloads
-# Note: ARM64 uses ports.ubuntu.com instead of archive.ubuntu.com
-RUN sed -i 's|http://ports.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list && \
-    sed -i 's|http://archive.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list && \
-    sed -i 's|http://security.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list
+# Use http (not https) since ca-certificates is not yet installed
+# Note: ARM64 uses ubuntu-ports repository
+RUN echo "deb http://mirrors.aliyun.com/ubuntu-ports/ jammy main restricted universe multiverse" > /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/ubuntu-ports/ jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/ubuntu-ports/ jammy-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/ubuntu-ports/ jammy-backports main restricted universe multiverse" >> /etc/apt/sources.list
 
 # Install all dependencies including Suricata
 RUN apt-get update && apt-get install -y --no-install-recommends \
